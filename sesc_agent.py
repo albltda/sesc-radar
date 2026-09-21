@@ -43,7 +43,7 @@ def coletar_eventos_sesc():
         response = requests.get(url, headers=headers, timeout=20)
         response.raise_for_status()
     except Exception as e:
-        print(f"Erro ao aceder ao portal do Sesc: {e}")
+        print(f"Erro ao acessar o portal do Sesc: {e}")
         return []
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -96,20 +96,23 @@ def filtrar_com_gemini(eventos):
 
     client = genai.Client(api_key=GEMINI_API_KEY)
 
+    # Une os eventos antes para evitar o erro de backslash dentro da f-string
+    eventos_formatados = "\n".join(eventos)
+
     prompt = f"""
-És um curador cultural especializado na programação do Sesc SP (focado na Capital e Grande ABC).
-Analisa a lista bruta de eventos abaixo e filtra os melhores destaques.
-Dá preferência a:
+Você é um curador cultural especializado na programação do Sesc SP (focado na Capital e Grande ABC).
+Analise a lista bruta de eventos abaixo e filtre os melhores destaques.
+Dê preferência para:
 - Cinema (CineSesc, mostras especiais, cineclubes)
 - Fotografia, artes visuais e oficinas práticas
-- Debates, literatura, humanidades e geopolítica/sociedade
+- Debates, literatura, humanidades e sociedade
 - Espetáculos e apresentações teatrais
 
-Gera uma mensagem compacta, organizada por tópicos e pronta para envio via WhatsApp, com emojis e hiperligações curtas quando disponíveis.
-Limita a mensagem a no máximo 1000 caracteres para não exceder o limite do mensageiro.
+Gere uma mensagem compacta, organizada por tópicos e pronta para envio via WhatsApp, com emojis e links curtos quando disponíveis.
+Limite a mensagem a no máximo 1000 caracteres para não estourar o limite do mensageiro.
 
 Eventos brutos:
-{"\n".join(eventos)}
+{eventos_formatados}
 """
 
     response = client.models.generate_content(
@@ -133,21 +136,21 @@ def enviar_whatsapp(mensagem):
         if res.status_code == 200:
             print("Mensagem enviada com sucesso ao WhatsApp!")
         else:
-            print(f"Falha no envio via CallMeBot. Estado: {res.status_code}, Resposta: {res.text}")
+            print(f"Falha no envio via CallMeBot. Status: {res.status_code}, Resposta: {res.text}")
     except Exception as e:
-        print(f"Erro no pedido para o CallMeBot: {e}")
+        print(f"Erro na requisição para o CallMeBot: {e}")
 
 
 def main():
-    print("A iniciar recolha no portal do Sesc SP...")
+    print("Iniciando coleta no portal do Sesc SP...")
     eventos = coletar_eventos_sesc()
     print(f"Total de itens pré-filtrados (Capital e ABC): {len(eventos)}")
 
-    print("A passar curadoria pelo Gemini 2.5 Flash...")
+    print("Passando curadoria pelo Gemini 2.5 Flash...")
     resumo = filtrar_com_gemini(eventos)
     print("\n--- RESUMO GERADO ---\n", resumo, "\n---------------------\n")
 
-    print("A disparar notificação no WhatsApp...")
+    print("Disparando notificação no WhatsApp...")
     enviar_whatsapp(resumo)
 
 
